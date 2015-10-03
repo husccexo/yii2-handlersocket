@@ -1,0 +1,25 @@
+{
+    "name": "husccexo/yii2-handlersocket",
+    "description": "Yii 2 extensions for MySQL HandlerSocket",
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Bek-Nazarov Vitaliy",
+            "email": "husccexo@gmail.com"
+        }
+    ],
+    "keywords": [
+        "mysql", "handler socket", "HandlerSocket", "Yii", "extension", "HSCache", "HSSession"
+    ],
+    "support": {
+        "source": "http://github.com/husccexo/yii2-handlersocket"
+    },
+    "autoload": {
+        "psr-4": {"husccexo\\yii\\HandlerSocket\\": "src"}
+    },
+    "require": {
+        "php": ">=5.4.0",
+        "yiisoft/yii2-jui": "*",
+        "husccexo/php-handlersocket-core": "dev-master"
+    }
+}
