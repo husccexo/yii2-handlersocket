@@ -20,6 +20,6 @@
     "require": {
         "php": ">=5.4.0",
         "yiisoft/yii2-jui": "*",
-        "husccexo/php-handlersocket-core": "dev-master"
+        "husccexo/php-handlersocket-core": "~1"
     }
 }
