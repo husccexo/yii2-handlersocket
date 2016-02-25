@@ -18,8 +18,7 @@
         "psr-4": {"husccexo\\yii\\HandlerSocket\\": "src"}
     },
     "require": {
-        "php": ">=5.4.0",
-        "yiisoft/yii2-jui": "*",
+        "yiisoft/yii2": ">=2.0.6",
         "husccexo/php-handlersocket-core": "@stable"
     }
 }
