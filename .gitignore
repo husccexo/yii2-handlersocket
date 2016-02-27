@@ -1,4 +1,5 @@
-composer.phar
-vendor/
+/vendor
+/composer.phar
+/composer.lock
 
 .idea

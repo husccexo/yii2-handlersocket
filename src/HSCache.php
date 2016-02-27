@@ -228,6 +228,7 @@ class HSCache extends Cache {
             HandlerSocket::OP_EQUAL,
             2,
             $this->type, $key,
+            1, 0,
             HandlerSocket::COMMAND_DELETE
         ];
         self::$hs->writeRequest($params);
