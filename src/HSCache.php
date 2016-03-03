@@ -5,10 +5,13 @@ namespace husccexo\yii\HandlerSocket;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\caching\Cache;
-use HSCore\HandlerSocket;
+use HSLib\CacheMultiType;
 
-class HSCache extends Cache {
-    /** @var HandlerSocket $hs */
+class HSCache extends Cache
+{
+    /**
+     * @var \HSLib\AdvancedCacheInterface
+     */
     private static $hs;
 
     public $host = 'localhost';
@@ -20,11 +23,17 @@ class HSCache extends Cache {
     public $table = 'cache';
     public $type = 'yii';
 
-
-    public $disabled = false;
-
     public $debug = false;
 
+    /**
+     * @var bool
+     * @deprecated
+     */
+    public $disabled = false;
+    /**
+     * @var int
+     * @deprecated
+     */
     public $manyLimit = 99999;
 
 
@@ -37,7 +46,7 @@ class HSCache extends Cache {
 
 
     /**
-     * Initializes the DbCache component.
+     * Initializes the HSCache component.
      * This method will initialize the [[db]] property to make sure it refers to a valid DB connection.
      * @throws InvalidConfigException if [[db]] is invalid.
      */
@@ -46,9 +55,10 @@ class HSCache extends Cache {
         parent::init();
 
         if (!self::$hs) {
-            self::$hs = new HandlerSocket(
-                $this->host, $this->portRead, $this->secret,
-                $this->host, $this->portWrite, $this->secret,
+            self::$hs = new CacheMultiType(
+                $this->host . ':' . $this->portRead, $this->secret,
+                $this->host . ':' . $this->portWrite, $this->secret,
+                $this->db, $this->table,
                 $this->debug
             );
         }
@@ -66,21 +76,7 @@ class HSCache extends Cache {
      */
     public function exists($key)
     {
-        if ($this->disabled) {
-            return false;
-        }
-
-        $key = $this->buildKey($key);
-
-        $params = [
-            self::$hs->openReadIndex($this->db, $this->table, null, ['expire']),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, $key
-        ];
-        $res = self::$hs->readRequest($params);
-
-        return $res && ($res[0][0] == 0 || $res[0][0] > time());
+        return self::$hs->valid($this->type, $this->buildKey($key));
     }
 
     /**
@@ -91,23 +87,8 @@ class HSCache extends Cache {
      */
     protected function getValue($key)
     {
-        if ($this->disabled) {
-            return false;
-        }
-
-        $params = [
-            self::$hs->openReadIndex($this->db, $this->table, null, ['expire', 'data']),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, $key
-        ];
-        $res = self::$hs->readRequest($params);
-
-        if ($res && ($res[0][0] == 0 || $res[0][0] > time())) {
-            return $res[0][1];
-        }
-
-        return false;
+        $res = self::$hs->get($this->type, $key);
+        return ($res === null) ? false : $res;
     }
 
     /**
@@ -117,33 +98,12 @@ class HSCache extends Cache {
      */
     protected function getValues($keys)
     {
-        if ($this->disabled || empty($keys)) {
-            return [];
-        }
-
-        $results = [];
-        foreach ($keys as $key) {
-            $results[$key] = false;
-        }
-
-        $ivlen = count($keys);
-
-        $params = array_merge([
-            self::$hs->openReadIndex($this->db, $this->table, null, ['key', 'expire', 'data']),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, '',
-            $ivlen, 0,
-            '@', 1, $ivlen
-        ], $keys);
-
-        foreach (self::$hs->readRequest($params) as $row) {
-            if ($row[1] == 0 || $row[1] > time()) {
-                $results[$row[0]] = $row[2];
-            }
-        }
-
-        return $results;
+        return array_map(
+            function ($res) {
+                return ($res === null) ? false : $res;
+            },
+            self::$hs->getMany($this->type, $keys)
+        );
     }
 
     /**
@@ -157,26 +117,8 @@ class HSCache extends Cache {
      */
     protected function setValue($key, $value, $duration)
     {
-        if ($this->disabled) {
-            return false;
-        }
-
-        if (!$this->_exists($key)) {
-            return $this->addValue($key, $value, $duration);
-        }
-
         $this->gc();
-
-        $params = [
-            self::$hs->openWriteIndex($this->db, $this->table, null, ['expire', 'data']),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, $key,
-            1, 0,
-            HandlerSocket::COMMAND_UPDATE,
-            $duration > 0 ? $duration + time() : 0, $value
-        ];
-        return (bool)self::$hs->writeRequest($params)[0][0];
+        return self::$hs->set($this->type, $key, $value, $duration);
     }
 
     /**
@@ -190,25 +132,8 @@ class HSCache extends Cache {
      */
     protected function addValue($key, $value, $duration)
     {
-        if ($this->disabled) {
-            return false;
-        }
-
         $this->gc();
-
-        try {
-            $params = [
-                self::$hs->openWriteIndex($this->db, $this->table, null, ['type', 'key', 'expire', 'data']),
-                HandlerSocket::COMMAND_INCREMENT,
-                4,
-                $this->type, $key, $duration > 0 ? $duration + time() : 0, $value
-            ];
-            self::$hs->writeRequest($params);
-
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
+        return self::$hs->add($this->type, $key, $value, $duration);
     }
 
     /**
@@ -219,21 +144,7 @@ class HSCache extends Cache {
      */
     protected function deleteValue($key)
     {
-        if ($this->disabled) {
-            return false;
-        }
-
-        $params = [
-            self::$hs->openWriteIndex($this->db, $this->table),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, $key,
-            1, 0,
-            HandlerSocket::COMMAND_DELETE
-        ];
-        self::$hs->writeRequest($params);
-
-        return true;
+        return self::$hs->delete($this->type, $key);
     }
 
     /**
@@ -243,25 +154,8 @@ class HSCache extends Cache {
      */
     public function gc($force = false)
     {
-        if ($this->disabled) {
-            return;
-        }
-
         if ($force || mt_rand(0, 1000000) < $this->gcProbability) {
-            $params = [
-                self::$hs->openWriteIndex($this->db, $this->table, 'expire', [], ['type', 'expire']),
-                HandlerSocket::OP_LESS,
-                1,
-                time(),
-                $this->manyLimit, 0,
-                'F', HandlerSocket::OP_EQUAL, 0, $this->type,
-                'F', HandlerSocket::OP_MORE, 1, 0,
-                HandlerSocket::COMMAND_DELETE
-            ];
-
-            do {
-                $res = (int)self::$hs->writeRequest($params)[0][0];
-            } while ($res == $this->manyLimit);
+            self::$hs->gc($this->type);
         }
     }
 
@@ -272,41 +166,6 @@ class HSCache extends Cache {
      */
     protected function flushValues()
     {
-        if ($this->disabled) {
-            return false;
-        }
-
-        $params = [
-            self::$hs->openWriteIndex($this->db, $this->table),
-            HandlerSocket::OP_EQUAL,
-            1,
-            $this->type,
-            $this->manyLimit, 0,
-            HandlerSocket::COMMAND_DELETE
-        ];
-
-        do {
-            $res = (int)self::$hs->writeRequest($params)[0][0];
-        } while ($res == $this->manyLimit);
-
-        return true;
-    }
-
-
-    private function _exists($key)
-    {
-        if ($this->disabled) {
-            return false;
-        }
-
-        $params = [
-            self::$hs->openReadIndex($this->db, $this->table, null, ['type']),
-            HandlerSocket::OP_EQUAL,
-            2,
-            $this->type, $key
-        ];
-        $res = self::$hs->readRequest($params);
-
-        return !empty($res);
+        return self::$hs->flush($this->type);
     }
 }

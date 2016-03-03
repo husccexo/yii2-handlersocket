@@ -19,6 +19,6 @@
     },
     "require": {
         "yiisoft/yii2": ">=2.0.6",
-        "husccexo/php-handlersocket-core": "1.*"
+        "husccexo/php-handlersocket-core": "~2.0"
     }
 }
