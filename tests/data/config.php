@@ -13,20 +13,24 @@ $config['databases']['mysql']['password'] = 'changeme';
 
  */
 
-$config = [
+return yii\helpers\ArrayHelper::merge([
     'databases' => [
-        'hs' => [
+        'hsServer' => [
             'host' => 'localhost',
             'portRead' => 9998,
             'portWrite' => 9999,
             'secret' => null,
             'db' => 'tests',
         ],
+
+        'hsModeMultiType' => [
+            'mode' => 'multiType',
+            'table' => 'cache_multi_type',
+            'group' => 'hstest'
+        ],
+        'hsModeMultiTable' => [
+            'mode' => 'multiTable',
+            'group' => 'hstest'
+        ],
     ],
-];
-
-if (is_file(__DIR__ . '/config-local.php')) {
-    include(__DIR__ . '/config-local.php');
-}
-
-return $config;
+], is_file(__DIR__ . '/config-local.php') ? require(__DIR__ . '/config-local.php') : []);

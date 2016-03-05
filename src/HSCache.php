@@ -5,23 +5,39 @@ namespace husccexo\yii\HandlerSocket;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\caching\Cache;
-use HSLib\CacheMultiType;
 
 class HSCache extends Cache
 {
     /**
      * @var \HSLib\AdvancedCacheInterface
      */
-    private static $hs;
+    private $hs;
 
     public $host = 'localhost';
     public $portRead = 9998;
     public $portWrite = 9999;
     public $secret;
 
+    /**
+     * @var string
+     */
     public $db;
+    /**
+     * @var string
+     */
     public $table = 'cache';
-    public $type = 'yii';
+    /**
+     * @var string
+     */
+    public $group = 'yii';
+
+    /**
+     * @var string
+     * @deprecated This property is an alias for [[group]]
+     */
+    public $type;
+
+    public $mode = 'multiType';
 
     public $debug = false;
 
@@ -54,13 +70,31 @@ class HSCache extends Cache
     {
         parent::init();
 
-        if (!self::$hs) {
-            self::$hs = new CacheMultiType(
-                $this->host . ':' . $this->portRead, $this->secret,
-                $this->host . ':' . $this->portWrite, $this->secret,
-                $this->db, $this->table,
-                $this->debug
-            );
+        if ($this->type !== null) {
+            $this->group = $this->type;
+        }
+
+        switch ($this->mode) {
+            case 'multiType':
+                $this->hs = new \HSLib\CacheMultiType(
+                    $this->host . ':' . $this->portRead, $this->secret,
+                    $this->host . ':' . $this->portWrite, $this->secret,
+                    $this->db, $this->table,
+                    $this->debug
+                );
+                break;
+
+            case 'multiTable':
+                $this->hs = new \HSLib\CacheMultiTable(
+                    $this->host . ':' . $this->portRead, $this->secret,
+                    $this->host . ':' . $this->portWrite, $this->secret,
+                    $this->db,
+                    $this->debug
+                );
+                break;
+
+            default:
+                throw new InvalidConfigException('Wrong mode in '.HSCache::className());
         }
     }
 
@@ -76,7 +110,7 @@ class HSCache extends Cache
      */
     public function exists($key)
     {
-        return self::$hs->valid($this->type, $this->buildKey($key));
+        return $this->hs->valid($this->group, $this->buildKey($key));
     }
 
     /**
@@ -87,7 +121,7 @@ class HSCache extends Cache
      */
     protected function getValue($key)
     {
-        $res = self::$hs->get($this->type, $key);
+        $res = $this->hs->get($this->group, $key);
         return ($res === null) ? false : $res;
     }
 
@@ -102,7 +136,7 @@ class HSCache extends Cache
             function ($res) {
                 return ($res === null) ? false : $res;
             },
-            self::$hs->getMany($this->type, $keys)
+            $this->hs->getMany($this->group, $keys)
         );
     }
 
@@ -118,7 +152,7 @@ class HSCache extends Cache
     protected function setValue($key, $value, $duration)
     {
         $this->gc();
-        return self::$hs->set($this->type, $key, $value, $duration);
+        return $this->hs->set($this->group, $key, $value, $duration);
     }
 
     /**
@@ -133,7 +167,7 @@ class HSCache extends Cache
     protected function addValue($key, $value, $duration)
     {
         $this->gc();
-        return self::$hs->add($this->type, $key, $value, $duration);
+        return $this->hs->add($this->group, $key, $value, $duration);
     }
 
     /**
@@ -144,7 +178,7 @@ class HSCache extends Cache
      */
     protected function deleteValue($key)
     {
-        return self::$hs->delete($this->type, $key);
+        return $this->hs->delete($this->group, $key);
     }
 
     /**
@@ -155,7 +189,7 @@ class HSCache extends Cache
     public function gc($force = false)
     {
         if ($force || mt_rand(0, 1000000) < $this->gcProbability) {
-            self::$hs->gc($this->type);
+            $this->hs->gc($this->group);
         }
     }
 
@@ -166,6 +200,6 @@ class HSCache extends Cache
      */
     protected function flushValues()
     {
-        return self::$hs->flush($this->type);
+        return $this->hs->flush($this->group);
     }
 }

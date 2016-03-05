@@ -10,9 +10,10 @@ use husccexo\yii\HandlerSocket\HSCache as Cache;
  * @group hs
  * @group caching
  */
-class HSCacheTest extends CacheTestCase
+class BaseHSCacheTestCase extends CacheTestCase
 {
     private $_cacheInstance = null;
+    protected $dbParam;
 
     /**
      * @return Cache
@@ -20,18 +21,22 @@ class HSCacheTest extends CacheTestCase
     protected function getCacheInstance()
     {
         $databases = self::getParam('databases');
-        $params = isset($databases['hs']) ? $databases['hs'] : null;
+
+        $params = isset($databases[$this->dbParam]) ? $databases[$this->dbParam] : null;
         if ($params === null) {
             $this->markTestSkipped('No HandlerSocket server connection configured.');
         }
 
         if ($this->_cacheInstance === null) {
-            $this->_cacheInstance = new Cache($params);
+            $this->_cacheInstance = new Cache(array_merge($databases['hsServer'], $params));
         }
 
         return $this->_cacheInstance;
     }
 
+    /**
+     * @group expireMilliseconds
+     */
     public function testExpireMilliseconds()
     {
         $cache = $this->getCacheInstance();
@@ -81,6 +86,8 @@ class HSCacheTest extends CacheTestCase
     /**
      * Store a megabyte and see how it goes
      * https://github.com/yiisoft/yii2/issues/6547
+     *
+     * @group reallyLargeData
      */
     public function testReallyLargeData()
     {
@@ -96,7 +103,7 @@ class HSCacheTest extends CacheTestCase
             $cache->set($key, $data);
         }
         $values = $cache->multiGet(array_keys($keys));
-        foreach($keys as $key => $value) {
+        foreach ($keys as $key => $value) {
             $this->assertArrayHasKey($key, $values);
             $this->assertTrue($values[$key] === $value);
         }

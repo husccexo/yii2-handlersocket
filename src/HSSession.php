@@ -6,9 +6,19 @@ use Yii;
 use yii\base\InvalidConfigException;
 use yii\web\CacheSession;
 
-class HSSession extends CacheSession {
+class HSSession extends CacheSession
+{
+    /**
+     * @var string
+     */
+    public $group = 'session';
 
-    public $type = 'session';
+    /**
+     * @var string
+     * @deprecated This property is an alias for [[group]]
+     */
+    public $type;
+
 
     /**
      * Initializes the application component.
@@ -21,7 +31,11 @@ class HSSession extends CacheSession {
             throw new InvalidConfigException('Cache component for session must be instance of '.HSCache::className());
         }
 
+        if ($this->type !== null) {
+            $this->group = $this->type;
+        }
+
         $this->cache = clone $this->cache;
-        $this->cache->type = $this->type;
+        $this->cache->group = $this->group;
     }
 }
