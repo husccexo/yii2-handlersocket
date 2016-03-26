@@ -13,7 +13,7 @@ composer require husccexo/yii2-handlersocket:~0.1
 or add
 
 ```json
-"husccexo/yii2-handlersocket": "~0.1"
+"husccexo/yii2-handlersocket": "~1.1"
 ```
 
 to the require section of your application's `composer.json` file.
