@@ -31,26 +31,14 @@ class HSCache extends Cache
      */
     public $group = 'yii';
 
-    /**
-     * @var string
-     * @deprecated This property is an alias for [[group]]
-     */
-    public $type;
-
     public $mode = 'multiType';
 
     public $debug = false;
 
     /**
      * @var bool
-     * @deprecated
      */
-    public $disabled = false;
-    /**
-     * @var int
-     * @deprecated
-     */
-    public $manyLimit = 99999;
+    public $autoGc = true;
 
 
     /**
@@ -69,10 +57,6 @@ class HSCache extends Cache
     public function init()
     {
         parent::init();
-
-        if ($this->type !== null) {
-            $this->group = $this->type;
-        }
 
         switch ($this->mode) {
             case 'multiType':
@@ -188,7 +172,7 @@ class HSCache extends Cache
      */
     public function gc($force = false)
     {
-        if ($force || mt_rand(0, 1000000) < $this->gcProbability) {
+        if ($force || $this->autoGc && mt_rand(0, 1000000) < $this->gcProbability) {
             $this->hs->gc($this->group);
         }
     }

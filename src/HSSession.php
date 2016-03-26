@@ -13,12 +13,6 @@ class HSSession extends CacheSession
      */
     public $group = 'session';
 
-    /**
-     * @var string
-     * @deprecated This property is an alias for [[group]]
-     */
-    public $type;
-
 
     /**
      * Initializes the application component.
@@ -29,10 +23,6 @@ class HSSession extends CacheSession
 
         if (!$this->cache instanceof HSCache) {
             throw new InvalidConfigException('Cache component for session must be instance of '.HSCache::className());
-        }
-
-        if ($this->type !== null) {
-            $this->group = $this->type;
         }
 
         $this->cache = clone $this->cache;
